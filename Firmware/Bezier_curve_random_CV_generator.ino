@@ -1,4 +1,5 @@
 #include  <avr/io.h>//for fast PWM
+
 int i = 0;
 int start_val = 0;//Bezier Curve Starting Point
 int end_val = 255;//Bezier Curve end Point
@@ -15,6 +16,10 @@ int freq_dev = 40;
 int chance[32] = {5, 12, 21, 33, 48, 67, 90, 118, 151, 189, 232, 279, 331, 386, 443, 501, 559, 616, 671, 723, 770, 813, 851, 884, 912, 935, 954, 969, 981, 990, 997, 1000};//normal distribution table
 int freq_err[32] = {8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30, 33, 36, 40, 46, 52, 58, 64, 70, 76, 82, 90, 98, 110, 122, 136, 148};//Frequency Variation
 
+// track & hold 
+int prevTrigState = LOW;
+float holdValue = 0;
+
 void setup()
 {
  for (int j = 0; j < 255; j++) {//Preparation of Bezier Curve Calculation Tables
@@ -29,13 +34,27 @@ void setup()
  delay(50);
 }
 
-void loop()
-{
+void loop() {
+  int currentTrigState = digitalRead(3); // Read the trig input
+
+  // Check if trig state has changed
+  if (currentTrigState != prevTrigState) {
+    // If Trig is HIGH (held high), store the current output value
+    if (currentTrigState == HIGH) {
+      holdValue = bz_val * level / 255;
+    }
+    // If Trig is LOW (released), reset the holdValue
+    else {
+      holdValue = 0;
+    }
+    prevTrigState = currentTrigState;
+  }
+ 
  if(timer1 +50 < millis()){
- freq = min(511,(analogRead(0) / 2 + analogRead(7) / 2)) * freq_dev;
- curve = min(255,(analogRead(1) / 4 + analogRead(6) / 4));
- level = analogRead(3) / 4;
- timer1 = millis();
+   freq = min(511,(analogRead(0) / 2 + analogRead(7) / 2)) * freq_dev;
+   curve = min(255,(analogRead(1) / 4 + analogRead(6) / 4));
+   level = analogRead(3) / 4;
+   timer1 = millis();
  }
 
  if (timer + (wait - old_wait)  <= micros()) {
@@ -69,6 +88,10 @@ void change_freq_error() {//Frequency variation is obtained from the standard de
  }
 }
 
-void PWM_OUT() {//PWM output
- analogWrite(10, bz_val * level / 255);
+void PWM_OUT() {
+  if (prevTrigState == HIGH) {
+    analogWrite(10, holdValue);
+  } else {
+    analogWrite(10, bz_val * level / 255);
+  }
 }
