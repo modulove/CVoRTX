@@ -26,6 +26,7 @@ void setup()
    x[j] = j * 0.003921; //j/255
  }
  pinMode(10, OUTPUT) ;//CV output
+ pinMode(3, INPUT_PULLUP); // Set Pin D3 as input with internal pull-up resistor
  timer = micros();
  timer1 = millis();
  //9,10pin pwm setting
